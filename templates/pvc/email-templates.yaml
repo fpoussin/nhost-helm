@@ -1,0 +1,16 @@
+{{- if .Values.auth.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "nhost.fullname" $ }}-auth-email-templates
+  labels:
+{{ include "nhost.labels" $ | indent 4 }}
+    app.kubernetes.io/component: auth
+spec:
+  accessModes:
+  - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: 1Gi
+{{- end }}

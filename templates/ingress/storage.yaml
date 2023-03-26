@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "nhost.fullname" . }}-storage
+  labels:
+    {{- include "nhost.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /v1/$2
+  {{- with .Values.settings.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.settings.ingress.className }}
+  rules:
+  - host: {{ .Values.settings.ingress.hostname }}
+    http:
+      paths:
+      - path: /v1/storage(/|$)(.*)
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "nhost.fullname" . }}-storage
+            port:
+              number: 80
+{{- if .Values.settings.ingress.enableTls }}
+  tls:
+  - hosts:
+      - {{ .Values.settings.ingress.hostname }}
+    secretName: {{ include "nhost.fullname" . }}-tls
+{{- end }}

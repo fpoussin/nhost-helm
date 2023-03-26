@@ -1,0 +1,30 @@
+{{- if and .Values.dashboard.enabled .Values.dashboard.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "nhost.fullname" . }}-dashboard
+  labels:
+    {{- include "nhost.labels" . | nindent 4 }}
+    app.kubernetes.io/component: dashboard
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "nhost.fullname" . }}-dashboard
+  minReplicas: {{ .Values.dashboard.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.dashboard.autoscaling.maxReplicas }}
+  metrics:
+  {{- if .Values.dashboard.autoscaling.targetCPUUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: {{ .Values.dashboard.autoscaling.targetCPUUtilizationPercentage }}
+  {{- end }}
+  {{- if .Values.dashboard.autoscaling.targetMemoryUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: memory
+      targetAverageUtilization: {{ .Values.dashboard.autoscaling.targetMemoryUtilizationPercentage }}
+  {{- end }}
+{{- end }}

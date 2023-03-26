@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nhost.fullname" . }}-storage
+  labels:
+    {{- include "nhost.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+spec:
+  {{- if not .Values.storage.autoscaling.enabled }}
+  replicas: {{ .Values.storage.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "nhost.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: storage
+  template:
+    metadata:
+      annotations:
+        checksum/config-env: {{ include (print $.Template.BasePath "/configmaps/env.yaml") . | sha256sum }}
+        checksum/secrets-env: {{ include (print $.Template.BasePath "/secrets/env.yaml") . | sha256sum }}
+        checksum/secrets-db: {{ include (print $.Template.BasePath "/secrets/database.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "nhost.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: storage
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "nhost.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.storage.image.repository }}:{{ .Values.storage.image.tag }}"
+        imagePullPolicy: {{ .Values.storage.image.pullPolicy }}
+        args:
+        - serve
+        ports:
+          - name: http
+            containerPort: 8000
+            protocol: TCP
+        # livenessProbe:
+        #   httpGet:
+        #     path: /healthz
+        #     port: http
+        #   periodSeconds: 10
+        #   failureThreshold: 3
+        # startupProbe:
+        #   httpGet:
+        #     path: /healthz
+        #     port: http
+        #   initialDelaySeconds: 20
+        #   periodSeconds: 3
+        #   failureThreshold: 5
+        resources:
+          {{- toYaml .Values.storage.resources | nindent 12 }}
+        env:
+        - name: PUBLIC_URL
+          value: {{ .Values.settings.ingress.hostname }}
+        - name: HASURA_METADATA
+          value: "1"
+        - name: HASURA_ENDPOINT
+          value: http://{{ include "nhost.fullname" . }}-graphql/v1
+        - name: POSTGRES_MIGRATIONS
+          value: "1"
+        envFrom:
+        - configMapRef:
+            name: {{ include "nhost.fullname" $ }}-env
+        - secretRef:
+            name: {{ include "nhost.fullname" $ }}-env
+        - secretRef:
+            name: {{ include "nhost.fullname" $ }}-database
+        - secretRef:
+            name: {{ include "nhost.fullname" $ }}-storage
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nhost.fullname" . }}-functions
+  labels:
+    {{- include "nhost.labels" . | nindent 4 }}
+    app.kubernetes.io/component: functions
+spec:
+  {{- if not .Values.graphql.autoscaling.enabled }}
+  replicas: {{ .Values.graphql.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "nhost.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: functions
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "nhost.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: functions
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "nhost.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.functions.image.repository }}:{{ .Values.functions.image.tag }}"
+        imagePullPolicy: {{ .Values.graphql.image.pullPolicy }}
+        ports:
+          - name: http
+            containerPort: 3000
+            protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 10
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 2
+          periodSeconds: 3
+          failureThreshold: 5
+        resources:
+          {{- toYaml .Values.graphql.resources | nindent 12 }}
+        volumeMounts:
+        - mountPath: /opt/projects
+          name: data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "nhost.fullname" $ }}-functions
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

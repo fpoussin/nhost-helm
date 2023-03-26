@@ -1,0 +1,110 @@
+{{- if .Values.auth.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nhost.fullname" . }}-auth
+  labels:
+    {{- include "nhost.labels" . | nindent 4 }}
+    app.kubernetes.io/component: auth
+spec:
+  {{- if not .Values.graphql.autoscaling.enabled }}
+  replicas: {{ .Values.graphql.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "nhost.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: auth
+  template:
+    metadata:
+      annotations:
+        checksum/config-env: {{ include (print $.Template.BasePath "/configmaps/env.yaml") . | sha256sum }}
+        checksum/secrets-env: {{ include (print $.Template.BasePath "/secrets/env.yaml") . | sha256sum }}
+        checksum/secrets-db: {{ include (print $.Template.BasePath "/secrets/database.yaml") . | sha256sum }}
+        checksum/secrets-smtp: {{ include (print $.Template.BasePath "/secrets/smtp.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "nhost.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: auth
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "nhost.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.auth.image.repository }}:{{ .Values.auth.image.tag }}"
+        imagePullPolicy: {{ .Values.graphql.image.pullPolicy }}
+        ports:
+          - name: http
+            containerPort: 4000
+            protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 10
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 20
+          periodSeconds: 3
+          failureThreshold: 12
+        resources:
+          {{- toYaml .Values.graphql.resources | nindent 12 }}
+        env:
+        - name: AUTH_HOST
+          value: '0.0.0.0'
+        - name: AUTH_LOG_LEVEL
+          value: {{ .Values.auth.logLevel }}
+        - name: HASURA_GRAPHQL_GRAPHQL_URL
+          value: http://{{ include "nhost.fullname" . }}-graphql/v1/graphql
+        {{- if .Values.settings.ingress.enableTls }}
+        - name: AUTH_CLIENT_URL
+          value: "https://{{ .Values.settings.ingress.hostname }}"
+        {{- else }}
+        - name: AUTH_CLIENT_URL
+          value: "http://{{ .Values.settings.ingress.hostname }}"
+        {{- end }}
+        {{- range $k, $v := .Values.auth.env }}
+        - name: {{ $k }}
+          value: {{ $v | quote }}
+        {{- end }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "nhost.fullname" $ }}-env
+        - secretRef:
+            name: {{ include "nhost.fullname" $ }}-env
+        - secretRef:
+            name: {{ include "nhost.fullname" $ }}-database
+        - secretRef:
+            name: {{ include "nhost.fullname" $ }}-smtp
+        volumeMounts:
+        - mountPath: app/email-templates
+          name: data
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "nhost.fullname" $ }}-auth-email-templates
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

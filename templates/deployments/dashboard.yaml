@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nhost.fullname" . }}-dashboard
+  labels:
+    {{- include "nhost.labels" . | nindent 4 }}
+    app.kubernetes.io/component: dashboard
+spec:
+  {{- if not .Values.dashboard.autoscaling.enabled }}
+  replicas: {{ .Values.dashboard.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "nhost.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: dashboard
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "nhost.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: dashboard
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "nhost.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.dashboard.image.repository }}:{{ .Values.dashboard.image.tag }}"
+        imagePullPolicy: {{ .Values.dashboard.image.pullPolicy }}
+        ports:
+          - name: http
+            containerPort: 3000
+            protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          periodSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          periodSeconds: 10
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.dashboard.resources | nindent 12 }}
+        env:
+        - name: NEXT_TELEMETRY_DISABLED
+          value: "1"
+        - name: NEXT_PUBLIC_ENV
+          value: {{ .Values.dashboard.env }}
+        {{- if .Values.settings.ingress.enableTls }}
+        - name: NEXT_PUBLIC_NHOST_BACKEND_URL
+          value: https://{{ .Values.settings.ingress.hostname }}
+        - name: NEXT_PUBLIC_NHOST_AUTH_URL
+          value: https://{{ .Values.settings.ingress.hostname }}/v1/auth
+        - name: NEXT_PUBLIC_NHOST_FUNCTIONS_URL
+          value: https://{{ .Values.settings.ingress.hostname }}/v1/functions
+        - name: NEXT_PUBLIC_NHOST_GRAPHQL_URL
+          value: https://{{ .Values.settings.ingress.hostname }}/v1/graphql
+        - name: NEXT_PUBLIC_NHOST_STORAGE_URL
+          value: https://{{ .Values.settings.ingress.hostname }}/v1/storage
+        - name: NEXT_PUBLIC_NHOST_HASURA_CONSOLE_URL
+          value: https://{{ .Values.settings.ingress.hostname }}
+        - name: NEXT_PUBLIC_NHOST_HASURA_MIGRATIONS_API_URL
+          value: https://{{ .Values.settings.ingress.hostname }}/v1/migrations
+        - name: NEXT_PUBLIC_NHOST_HASURA_API_URL
+          value: https://{{ .Values.settings.ingress.hostname }}
+        {{- else }}
+        - name: NEXT_PUBLIC_NHOST_BACKEND_URL
+          value: http://{{ .Values.settings.ingress.hostname }}
+        - name: NEXT_PUBLIC_NHOST_AUTH_URL
+          value: http://{{ .Values.settings.ingress.hostname }}/v1/auth
+        - name: NEXT_PUBLIC_NHOST_FUNCTIONS_URL
+          value: http://{{ .Values.settings.ingress.hostname }}/v1/functions
+        - name: NEXT_PUBLIC_NHOST_GRAPHQL_URL
+          value: http://{{ .Values.settings.ingress.hostname }}/v1/graphql
+        - name: NEXT_PUBLIC_NHOST_STORAGE_URL
+          value: http://{{ .Values.settings.ingress.hostname }}/v1/storage
+        - name: NEXT_PUBLIC_NHOST_HASURA_CONSOLE_URL
+          value: http://{{ .Values.settings.ingress.hostname }}
+        - name: NEXT_PUBLIC_NHOST_HASURA_MIGRATIONS_API_URL
+          value: http://{{ .Values.settings.ingress.hostname }}/v1/migrations
+        - name: NEXT_PUBLIC_NHOST_HASURA_API_URL
+          value: http://{{ .Values.settings.ingress.hostname }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "nhost.fullname" $ }}-env
+        - secretRef:
+            name: {{ include "nhost.fullname" $ }}-env
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

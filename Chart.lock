@@ -1,0 +1,12 @@
+dependencies:
+- name: postgresql
+  repository: https://charts.bitnami.com/bitnami
+  version: 12.2.6
+- name: minio
+  repository: https://charts.bitnami.com/bitnami
+  version: 12.2.1
+- name: mailhog
+  repository: https://codecentric.github.io/helm-charts
+  version: 5.2.3
+digest: sha256:126f081bf70e6eda4085d83061622c85d6fef91c523dcb412eabdfaa852e83e5
+generated: "2023-03-26T13:47:06.434690185+02:00"

@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "nhost.fullname" . }}-graphql
+  labels:
+    {{- include "nhost.labels" . | nindent 4 }}
+    app.kubernetes.io/component: graphql
+  {{- with .Values.settings.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.settings.ingress.className }}
+  rules:
+  - host: {{ .Values.settings.ingress.hostname }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "nhost.fullname" . }}-graphql
+            port:
+              number: 80
+{{- if .Values.settings.ingress.enableTls }}
+  tls:
+  - hosts:
+      - {{ .Values.settings.ingress.hostname }}
+    secretName: {{ include "nhost.fullname" . }}-tls
+{{- end }}

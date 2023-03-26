@@ -1,0 +1,30 @@
+{{- if .Values.graphql.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "nhost.fullname" . }}-graphql
+  labels:
+    {{- include "nhost.labels" . | nindent 4 }}
+    app.kubernetes.io/component: graphql
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "nhost.fullname" . }}-graphql
+  minReplicas: {{ .Values.graphql.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.graphql.autoscaling.maxReplicas }}
+  metrics:
+  {{- if .Values.graphql.autoscaling.targetCPUUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: {{ .Values.graphql.autoscaling.targetCPUUtilizationPercentage }}
+  {{- end }}
+  {{- if .Values.graphql.autoscaling.targetMemoryUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: memory
+      targetAverageUtilization: {{ .Values.graphql.autoscaling.targetMemoryUtilizationPercentage }}
+  {{- end }}
+{{- end }}

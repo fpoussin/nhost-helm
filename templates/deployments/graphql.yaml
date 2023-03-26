@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nhost.fullname" . }}-graphql
+  labels:
+    {{- include "nhost.labels" . | nindent 4 }}
+    app.kubernetes.io/component: graphql
+spec:
+  {{- if not .Values.graphql.autoscaling.enabled }}
+  replicas: {{ .Values.graphql.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "nhost.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: graphql
+  template:
+    metadata:
+      annotations:
+        checksum/config-env: {{ include (print $.Template.BasePath "/configmaps/env.yaml") . | sha256sum }}
+        checksum/secrets-env: {{ include (print $.Template.BasePath "/secrets/env.yaml") . | sha256sum }}
+        checksum/secrets-db: {{ include (print $.Template.BasePath "/secrets/database.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "nhost.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: graphql
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "nhost.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.graphql.image.repository }}:{{ .Values.graphql.image.tag }}"
+        imagePullPolicy: {{ .Values.graphql.image.pullPolicy }}
+        ports:
+          - name: http
+            containerPort: 8080
+            protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          periodSeconds: 10
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: http
+          initialDelaySeconds: 2
+          periodSeconds: 3
+          failureThreshold: 5
+        resources:
+          {{- toYaml .Values.graphql.resources | nindent 12 }}
+        env:
+        - name: HASURA_GRAPHQL_LOG_LEVEL
+          value: {{ .Values.graphql.logLevel }}
+        - name: HASURA_GRAPHQL_UNAUTHORIZED_ROLE
+          value: {{ .Values.graphql.unauthorizedRole }}
+        - name: HASURA_GRAPHQL_ENABLE_CONSOLE
+          value: {{ .Values.graphql.enableConsole | quote }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "nhost.fullname" $ }}-env
+        - secretRef:
+            name: {{ include "nhost.fullname" $ }}-env
+        - secretRef:
+            name: {{ include "nhost.fullname" $ }}-database
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

@@ -1,0 +1,269 @@
+# Default values for nhost.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# nameOverride -- String to partially override the deployment name (will maintain the release name)
+nameOverride: ""
+# -- String to fully override the deployment name
+fullnameOverride: ""
+
+# commonLabels -- Labels to append to all resources
+commonLabels: {}
+  # foo: bar
+
+imagePullSecrets: []
+
+## Common settings
+
+settings:
+  enableConsole: true
+  logLevel: DEBUG
+  unauthorizedRole: public
+
+  ingress:
+    hostname: nhost.local
+    enableTls: false
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+
+secrets:
+  jwtKey: 5152fa850c02dc222631cca898ed1485821a70912a6e3649c49076912daa3b62182ba013315915d64f40cddfbb8b58eb5bd11ba225336a6af45bbae07ca873f3
+  admin: nhost-admin-secret
+
+auth:
+  # -- Hasura-auth can be disabled when using an external auth prodiver
+  enabled: true
+  logLevel: info
+
+  env:
+    AUTH_EMAIL_PASSWORDLESS_ENABLED: 'true'
+
+  # -- Ignored when using Mailhog (mailhog.enabled == true)
+  smtp:
+    host: smtp.nhost.io
+    port: 25
+    user: user
+    password: changeme
+    sender: no-reply@nhost.io
+
+  image:
+    repository: nhost/hasura-auth
+    pullPolicy: IfNotPresent
+    tag: "0.19.1"
+
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+dashboard:
+  enabled: true
+  hostname: nhost-dashboard.local
+  env: prod
+
+  image:
+    repository: nhost/dashboard
+    pullPolicy: IfNotPresent
+    tag: "0.13.9"
+
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+functions:
+  persistence:
+    size: 1Gi
+
+  image:
+    repository: nhost/functions
+    pullPolicy: IfNotPresent
+    tag: "0.1.8"
+
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+storage:
+  # -- Ignored when using Minio
+  s3:
+    access_key: ""
+    secret_key: ""
+    endpoint: ""
+    bucket: ""
+
+  image:
+    repository: nhost/hasura-storage
+    pullPolicy: IfNotPresent
+    tag: "0.3.4"
+
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+graphql:
+  logLevel: debug
+  enableConsole: true
+  unauthorizedRole: public
+
+  image:
+    repository: hasura/graphql-engine
+    pullPolicy: IfNotPresent
+    tag: v2.21.0
+
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+##
+## 3rd party services used for development
+##
+
+mailhog:
+  enabled: true
+
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - host: mailhog.local
+        paths:
+          - path: "/"
+            pathType: Prefix
+
+minio:
+  enabled: true
+  persistence:
+    size: 1Gi
+
+  defaultBuckets: nhost
+
+  auth:
+    rootUser: admin
+    rootPassword: youshouldchangethis
+    forceNewKeys: true
+
+##
+## PostgreSQL Database
+##
+
+postgresql:
+  enabled: true
+
+  auth:
+    enablePostgresUser: true
+    postgresPassword: changethisadminpassword
+    username: nhost
+    password: changemeaswell
+    database: nhost
+
+  image:
+    debug: true
+
+  volumePermissions:
+    enabled: true
+
+  primary:
+    persistence:
+      size: 1Gi
+    initdb:
+      scripts:
+        0001-create-schema.sql: |
+          CREATE SCHEMA IF NOT EXISTS auth;
+          CREATE SCHEMA IF NOT EXISTS storage;
+          CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;
+          CREATE EXTENSION IF NOT EXISTS citext WITH SCHEMA public;
+          CREATE OR REPLACE FUNCTION public.set_current_timestamp_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$
+          declare _new record;
+          begin _new := new;
+          _new."updated_at" = now();
+          return _new;
+          end;
+          $$;
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
