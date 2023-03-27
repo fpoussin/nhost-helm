@@ -1,0 +1,16 @@
+{{- if .Values.graphql.persistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "nhost.fullname" $ }}-graphql
+  labels:
+{{ include "nhost.labels" $ | indent 4 }}
+    app.kubernetes.io/component: graphql
+spec:
+  accessModes:
+  - "ReadWriteOnce"
+  resources:
+    requests:
+      storage: {{ .Values.graphql.persistence.size }}
+{{- end }}

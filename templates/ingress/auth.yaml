@@ -9,13 +9,13 @@ metadata:
     app.kubernetes.io/component: auth
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /$2
-  {{- with .Values.settings.ingress.annotations }}
+  {{- with .Values.global.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  ingressClassName: {{ .Values.settings.ingress.className }}
+  ingressClassName: {{ .Values.global.ingress.className }}
   rules:
-  - host: {{ .Values.settings.ingress.hostname }}
+  - host: {{ .Values.auth.hostname }}
     http:
       paths:
       - path: /v1/auth(/|$)(.*)
@@ -24,11 +24,11 @@ spec:
           service:
             name: {{ include "nhost.fullname" . }}-auth
             port:
-              number: 80
-{{- if .Values.settings.ingress.enableTls }}
+              name: http
+{{- if .Values.global.ingress.enableTls }}
   tls:
   - hosts:
-      - {{ .Values.settings.ingress.hostname }}
-    secretName: {{ include "nhost.fullname" . }}-tls
+      - {{ .Values.auth.hostname }}
+    secretName: {{ include "nhost.fullname" . }}-auth-tls
 {{- end }}
 {{- end }}

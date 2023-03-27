@@ -5,26 +5,26 @@ metadata:
   labels:
     {{- include "nhost.labels" . | nindent 4 }}
     app.kubernetes.io/component: graphql
-  {{- with .Values.settings.ingress.annotations }}
+  {{- with .Values.global.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  ingressClassName: {{ .Values.settings.ingress.className }}
+  ingressClassName: {{ .Values.global.ingress.className }}
   rules:
-  - host: {{ .Values.settings.ingress.hostname }}
+  - host: {{ .Values.graphql.hostnames.api }}
     http:
       paths:
-      - path: /
+      - path: /v\d/
         pathType: Prefix
         backend:
           service:
             name: {{ include "nhost.fullname" . }}-graphql
             port:
-              number: 80
-{{- if .Values.settings.ingress.enableTls }}
+              name: http
+{{- if .Values.global.ingress.enableTls }}
   tls:
   - hosts:
-      - {{ .Values.settings.ingress.hostname }}
-    secretName: {{ include "nhost.fullname" . }}-tls
+      - {{ .Values.graphql.hostnames.api }}
+    secretName: {{ include "nhost.fullname" . }}-api-tls
 {{- end }}

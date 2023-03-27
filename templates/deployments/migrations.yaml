@@ -1,22 +1,24 @@
+{{- if .Values.migrations.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "nhost.fullname" . }}-storage
+  name: {{ include "nhost.fullname" . }}-migrations
   labels:
     {{- include "nhost.labels" . | nindent 4 }}
-    app.kubernetes.io/component: storage
+    app.kubernetes.io/component: migrations
 spec:
-  {{- if not .Values.storage.autoscaling.enabled }}
-  replicas: {{ .Values.storage.replicaCount }}
+  {{- if not .Values.migrations.autoscaling.enabled }}
+  replicas: {{ .Values.migrations.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
       {{- include "nhost.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: storage
+      app.kubernetes.io/component: migrations
   template:
     metadata:
       annotations:
         checksum/config-env: {{ include (print $.Template.BasePath "/configmaps/env.yaml") . | sha256sum }}
+        checksum/config-migrations: {{ include (print $.Template.BasePath "/configmaps/migrations.yaml") . | sha256sum }}
         checksum/secrets-env: {{ include (print $.Template.BasePath "/secrets/env.yaml") . | sha256sum }}
         checksum/secrets-db: {{ include (print $.Template.BasePath "/secrets/database.yaml") . | sha256sum }}
       {{- with .Values.podAnnotations }}
@@ -24,7 +26,7 @@ spec:
       {{- end }}
       labels:
         {{- include "nhost.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: storage
+        app.kubernetes.io/component: migrations
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -37,13 +39,29 @@ spec:
       - name: {{ .Chart.Name }}
         securityContext:
           {{- toYaml .Values.securityContext | nindent 12 }}
-        image: "{{ .Values.storage.image.repository }}:{{ .Values.storage.image.tag }}"
-        imagePullPolicy: {{ .Values.storage.image.pullPolicy }}
+        image: "{{ .Values.migrations.image.repository }}:{{ .Values.migrations.image.tag }}"
+        imagePullPolicy: {{ .Values.migrations.image.pullPolicy }}
+        command:
+        - /bin/sh
+        - -c
         args:
-        - serve
+        - "hasura-cli console --no-browser
+        --admin-secret $HASURA_GRAPHQL_ADMIN_SECRET
+        --address 0.0.0.0 --console-port 8080 --api-port 8081
+{{- if .Values.global.ingress.enableTls }}
+        --endpoint https://{{ .Values.graphql.hostnames.api }}
+        --console-hge-endpoint https://{{ .Values.graphql.hostnames.api }}
+        --api-host https://{{ .Values.migrations.hostname }}
+{{- else }}
+        --endpoint http://{{ .Values.graphql.hostnames.api }}
+        --console-hge-endpoint http://{{ .Values.graphql.hostnames.api }}
+        --api-host http://{{ .Values.migrations.hostname }}
+        --insecure-skip-tls-verify
+{{- end }}
+        "
         ports:
-          - name: http
-            containerPort: 8000
+          - name: api
+            containerPort: 8081
             protocol: TCP
         # livenessProbe:
         #   httpGet:
@@ -55,20 +73,18 @@ spec:
         #   httpGet:
         #     path: /healthz
         #     port: http
-        #   initialDelaySeconds: 20
+        #   initialDelaySeconds: 2
         #   periodSeconds: 3
         #   failureThreshold: 5
         resources:
-          {{- toYaml .Values.storage.resources | nindent 12 }}
+          {{- toYaml .Values.migrations.resources | nindent 12 }}
         env:
-        - name: PUBLIC_URL
-          value: {{ .Values.graphql.hostnames.api }}
-        - name: HASURA_METADATA
-          value: "1"
-        - name: HASURA_ENDPOINT
-          value: http://{{ include "nhost.fullname" . }}-graphql/v1
-        - name: POSTGRES_MIGRATIONS
-          value: "1"
+        - name: HASURA_GRAPHQL_LOG_LEVEL
+          value: {{ .Values.migrations.logLevel }}
+        - name: HASURA_GRAPHQL_ENABLE_CONSOLE
+          value: "true"
+        - name: HASURA_GRAPHQL_ENABLE_TELEMETRY
+          value: "false"
         envFrom:
         - configMapRef:
             name: {{ include "nhost.fullname" $ }}-env
@@ -76,8 +92,21 @@ spec:
             name: {{ include "nhost.fullname" $ }}-env
         - secretRef:
             name: {{ include "nhost.fullname" $ }}-database
-        - secretRef:
-            name: {{ include "nhost.fullname" $ }}-storage
+        volumeMounts:
+          - name: config
+            mountPath: /config.yaml
+            subPath: config.yaml
+        # volumeMounts:
+        #   - name: hasura
+        #     mountPath: /.hasura
+      volumes:
+      - name: config
+        configMap:
+          name: {{ include "nhost.fullname" $ }}-migrations
+      # - name: hasura
+      #   emptyDir:
+      #     medium: Memory
+      #     sizeLimit: 20Mi
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -90,3 +119,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+{{- end }}

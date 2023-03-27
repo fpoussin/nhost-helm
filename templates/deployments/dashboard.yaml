@@ -58,45 +58,51 @@ spec:
           value: "1"
         - name: NEXT_PUBLIC_ENV
           value: {{ .Values.dashboard.env }}
-        {{- if .Values.settings.ingress.enableTls }}
-        - name: NEXT_PUBLIC_NHOST_BACKEND_URL
-          value: https://{{ .Values.settings.ingress.hostname }}
+        - name: NEXT_PUBLIC_NHOST_PLATFORM
+          value: "false"
+        {{- if .Values.global.ingress.enableTls }}
         - name: NEXT_PUBLIC_NHOST_AUTH_URL
-          value: https://{{ .Values.settings.ingress.hostname }}/v1/auth
+          value: https://{{ .Values.auth.hostname }}/v1/auth
         - name: NEXT_PUBLIC_NHOST_FUNCTIONS_URL
-          value: https://{{ .Values.settings.ingress.hostname }}/v1/functions
+          value: https://{{ .Values.graphql.hostnames.api }}/v1/functions
         - name: NEXT_PUBLIC_NHOST_GRAPHQL_URL
-          value: https://{{ .Values.settings.ingress.hostname }}/v1/graphql
+          value: https://{{ .Values.graphql.hostnames.api }}/v1/graphql
         - name: NEXT_PUBLIC_NHOST_STORAGE_URL
-          value: https://{{ .Values.settings.ingress.hostname }}/v1/storage
+          value: https://{{ .Values.graphql.hostnames.api }}/v1/storage
         - name: NEXT_PUBLIC_NHOST_HASURA_CONSOLE_URL
-          value: https://{{ .Values.settings.ingress.hostname }}
+          value: https://{{ .Values.graphql.hostnames.console }}
         - name: NEXT_PUBLIC_NHOST_HASURA_MIGRATIONS_API_URL
-          value: https://{{ .Values.settings.ingress.hostname }}/v1/migrations
+          value: https://{{ .Values.migrations.hostname }}
         - name: NEXT_PUBLIC_NHOST_HASURA_API_URL
-          value: https://{{ .Values.settings.ingress.hostname }}
+          value: https://{{ .Values.graphql.hostnames.api }}
         {{- else }}
-        - name: NEXT_PUBLIC_NHOST_BACKEND_URL
-          value: http://{{ .Values.settings.ingress.hostname }}
         - name: NEXT_PUBLIC_NHOST_AUTH_URL
-          value: http://{{ .Values.settings.ingress.hostname }}/v1/auth
+          value: http://{{ .Values.auth.hostname }}/v1/auth
         - name: NEXT_PUBLIC_NHOST_FUNCTIONS_URL
-          value: http://{{ .Values.settings.ingress.hostname }}/v1/functions
+          value: http://{{ .Values.graphql.hostnames.api }}/v1/functions
         - name: NEXT_PUBLIC_NHOST_GRAPHQL_URL
-          value: http://{{ .Values.settings.ingress.hostname }}/v1/graphql
+          value: http://{{ .Values.graphql.hostnames.api }}/v1/graphql
         - name: NEXT_PUBLIC_NHOST_STORAGE_URL
-          value: http://{{ .Values.settings.ingress.hostname }}/v1/storage
+          value: http://{{ .Values.graphql.hostnames.api }}/v1/storage
         - name: NEXT_PUBLIC_NHOST_HASURA_CONSOLE_URL
-          value: http://{{ .Values.settings.ingress.hostname }}
+          value: http://{{ .Values.graphql.hostnames.console }}
         - name: NEXT_PUBLIC_NHOST_HASURA_MIGRATIONS_API_URL
-          value: http://{{ .Values.settings.ingress.hostname }}/v1/migrations
+          value: http://{{ .Values.migrations.hostname }}
         - name: NEXT_PUBLIC_NHOST_HASURA_API_URL
-          value: http://{{ .Values.settings.ingress.hostname }}
+          value: http://{{ .Values.graphql.hostnames.api }}
         envFrom:
         - configMapRef:
             name: {{ include "nhost.fullname" $ }}-env
         - secretRef:
             name: {{ include "nhost.fullname" $ }}-env
+        volumeMounts:
+        - name: tmp
+          mountPath: /app/dashboard/public
+      volumes:
+      - name: tmp
+        emptyDir:
+          medium: Memory
+          sizeLimit: 50Mi
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:

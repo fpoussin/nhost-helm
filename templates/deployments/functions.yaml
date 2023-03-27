@@ -1,3 +1,5 @@
+{{- if .Values.functions.enabled }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -55,7 +57,7 @@ spec:
         resources:
           {{- toYaml .Values.graphql.resources | nindent 12 }}
         volumeMounts:
-        - mountPath: /opt/projects
+        - mountPath: /opt/project
           name: data
       volumes:
       - name: data
@@ -73,3 +75,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+{{- end }}

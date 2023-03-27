@@ -1,10 +1,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "nhost.fullname" . }}-dashboard
+  name: {{ include "nhost.fullname" . }}-console
   labels:
     {{- include "nhost.labels" . | nindent 4 }}
-    app.kubernetes.io/component: dashboard
+    app.kubernetes.io/component: graphql
   annotations:
   {{- if .Values.global.dashboard.password }}
     nginx.ingress.kubernetes.io/auth-type: basic
@@ -17,19 +17,19 @@ metadata:
 spec:
   ingressClassName: {{ .Values.global.ingress.className }}
   rules:
-  - host: {{ .Values.dashboard.hostname }}
+  - host: {{ .Values.graphql.hostnames.console }}
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: {{ include "nhost.fullname" . }}-dashboard
+            name: {{ include "nhost.fullname" . }}-graphql
             port:
               name: http
 {{- if .Values.global.ingress.enableTls }}
   tls:
   - hosts:
-      - {{ .Values.dashboard.hostname }}
-    secretName: {{ include "nhost.fullname" . }}-dashboard-tls
+      - {{ .Values.graphql.hostnames.console }}
+    secretName: {{ include "nhost.fullname" . }}-console-tls
 {{- end }}

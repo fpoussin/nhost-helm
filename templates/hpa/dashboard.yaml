@@ -1,4 +1,4 @@
-{{- if and .Values.dashboard.enabled .Values.dashboard.autoscaling.enabled }}
+{{- if  .Values.dashboard.autoscaling.enabled }}
 ---
 apiVersion: autoscaling/v2beta1
 kind: HorizontalPodAutoscaler

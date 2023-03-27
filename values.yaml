@@ -13,29 +13,37 @@ commonLabels: {}
 
 imagePullSecrets: []
 
-## Common settings
+## Global settings
 
-settings:
-  enableConsole: true
-  logLevel: DEBUG
+global:
+  logLevel: INFO
   unauthorizedRole: public
 
+  # -- HTTP auth for NHost dashboard and Hasura console. Disabled when password is empty.
+  dashboard:
+    user: admin
+    password: ""
+
+  # -- Shared ingress settings
   ingress:
-    hostname: nhost.local
     enableTls: false
     className: nginx
     annotations:
       cert-manager.io/cluster-issuer: letsencrypt-prod
 
-secrets:
-  jwtKey: 5152fa850c02dc222631cca898ed1485821a70912a6e3649c49076912daa3b62182ba013315915d64f40cddfbb8b58eb5bd11ba225336a6af45bbae07ca873f3
-  admin: nhost-admin-secret
+  secrets:
+    jwtKey: 5152fa850c02dc222631cca898ed1485821a70912a6e3649c49076912daa3b62182ba013315915d64f40cddfbb8b58eb5bd11ba225336a6af45bbae07ca873f3
+    admin: nhost-admin-secret
 
 auth:
   # -- Hasura-auth can be disabled when using an external auth prodiver
   enabled: true
+  # -- Auth log level
   logLevel: info
+  # -- Auth hostname
+  hostname: nhost.local
 
+  # -- Extra env vars
   env:
     AUTH_EMAIL_PASSWORDLESS_ENABLED: 'true'
 
@@ -68,15 +76,19 @@ auth:
       cpu: 100m
       memory: 256Mi
 
+# -- NHost dashboard
 dashboard:
+  # -- 
   enabled: true
+  # -- Dashboard hostname
   hostname: nhost-dashboard.local
+  # -- Dashboard env mode
   env: prod
 
   image:
     repository: nhost/dashboard
     pullPolicy: IfNotPresent
-    tag: "0.13.9"
+    tag: "0.13.10"
 
   replicaCount: 1
   autoscaling:
@@ -94,8 +106,12 @@ dashboard:
       cpu: 100m
       memory: 256Mi
 
+# -- Serverless functions
 functions:
+  # -- Enable serverless functions
+  enabled: true
   persistence:
+    # -- Persistent volume size
     size: 1Gi
 
   image:
@@ -148,15 +164,59 @@ storage:
       cpu: 100m
       memory: 256Mi
 
+# -- Main API
 graphql:
-  logLevel: debug
   enableConsole: true
+  logLevel: info
   unauthorizedRole: public
+
+  # -- API and console can have different hostnames
+  hostnames:
+    api: nhost.local
+    console: nhost-console.local
+
+  # -- You can enable persistance before migrations in order to copy the needed files
+  # `kubectl cp` can be used for that
+  persistence:
+    enabled: true
+    size: 1Gi
+
+  # -- persistence is required for this to work
+  migrations:
+    enabled: false
 
   image:
     repository: hasura/graphql-engine
     pullPolicy: IfNotPresent
-    tag: v2.21.0
+    tag: v2.21.0-ce.cli-migrations-v3
+
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# -- Migrations API
+migrations:
+  enabled: true
+  hostname: nhost-migrations.local
+
+  logLevel: debug
+
+  image:
+    repository: fpoussin/hasura-cli
+    pullPolicy: IfNotPresent
+    tag: v2.21.0-bind-fix
 
   replicaCount: 1
   autoscaling:

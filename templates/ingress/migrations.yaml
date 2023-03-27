@@ -1,34 +1,33 @@
-{{- if .Values.functions.enabled }}
+{{- if .Values.migrations.enabled }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "nhost.fullname" . }}-functions
+  name: {{ include "nhost.fullname" . }}-migrations
   labels:
     {{- include "nhost.labels" . | nindent 4 }}
-    app.kubernetes.io/component: functions
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    app.kubernetes.io/component: migrations
   {{- with .Values.global.ingress.annotations }}
+  annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
   ingressClassName: {{ .Values.global.ingress.className }}
   rules:
-  - host: {{ .Values.graphql.hostnames.api }}
+  - host: {{ .Values.migrations.hostname }}
     http:
       paths:
-      - path: /v1/functions(/|$)(.*)
+      - path: /apis/migrate
         pathType: Prefix
         backend:
           service:
-            name: {{ include "nhost.fullname" . }}-functions
+            name: {{ include "nhost.fullname" . }}-migrations
             port:
               name: http
 {{- if .Values.global.ingress.enableTls }}
   tls:
   - hosts:
-      - {{ .Values.graphql.hostnames.api }}
-    secretName: {{ include "nhost.fullname" . }}-api-tls
+      - {{ .Values.migrations.hostname }}
+    secretName: {{ include "nhost.fullname" . }}-migrations-tls
 {{- end }}
 {{- end }}

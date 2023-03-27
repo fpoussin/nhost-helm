@@ -35,11 +35,16 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "nhost.serviceAccountName" . }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+        fsGroup: 2000
       containers:
       - name: {{ .Chart.Name }}
         securityContext:
-          {{- toYaml .Values.securityContext | nindent 12 }}
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
         image: "{{ .Values.auth.image.repository }}:{{ .Values.auth.image.tag }}"
         imagePullPolicy: {{ .Values.graphql.image.pullPolicy }}
         ports:
@@ -68,12 +73,12 @@ spec:
           value: {{ .Values.auth.logLevel }}
         - name: HASURA_GRAPHQL_GRAPHQL_URL
           value: http://{{ include "nhost.fullname" . }}-graphql/v1/graphql
-        {{- if .Values.settings.ingress.enableTls }}
+        {{- if .Values.global.ingress.enableTls }}
         - name: AUTH_CLIENT_URL
-          value: "https://{{ .Values.settings.ingress.hostname }}"
+          value: "https://{{ .Values.graphql.hostnames.api }}"
         {{- else }}
         - name: AUTH_CLIENT_URL
-          value: "http://{{ .Values.settings.ingress.hostname }}"
+          value: "http://{{ .Values.graphql.hostnames.api }}"
         {{- end }}
         {{- range $k, $v := .Values.auth.env }}
         - name: {{ $k }}

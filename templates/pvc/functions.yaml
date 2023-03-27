@@ -1,3 +1,4 @@
+{{- if .Values.functions.enabled }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -12,3 +13,4 @@ spec:
   resources:
     requests:
       storage: {{ .Values.functions.persistence.size }}
+{{- end }}
