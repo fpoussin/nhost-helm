@@ -1,0 +1,27 @@
+apiVersion: v1
+entries:
+  nhost:
+  - apiVersion: v2
+    appVersion: 1.0.0
+    created: "2023-03-28T10:27:23.666280852+02:00"
+    dependencies:
+    - condition: postgresql.enabled
+      name: postgresql
+      repository: https://charts.bitnami.com/bitnami
+      version: 12.2.6
+    - condition: minio.enabled
+      name: minio
+      repository: https://charts.bitnami.com/bitnami
+      version: 12.2.1
+    - condition: mailhog.enabled
+      name: mailhog
+      repository: https://codecentric.github.io/helm-charts
+      version: 5.2.3
+    description: A Helm chart for Kubernetes
+    digest: e4ec7c17b980a66a0d099e74ce9c48c7e7d778abec1800fdd6a532344f86784f
+    name: nhost
+    type: application
+    urls:
+    - nhost-1.1.0.tgz
+    version: 1.1.0
+generated: "2023-03-28T10:27:23.657160777+02:00"
